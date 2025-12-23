@@ -1,0 +1,63 @@
+# cc-manager configuration file
+# Format: YAML
+#
+# This file stores your Claude Code provider configurations.
+# Keep this file secure and never commit it to public repositories.
+
+version: "1.0"
+
+# Default provider to use on startup
+default_provider: "aicodemirror"
+
+# Provider configurations
+providers:
+  # Example: API Key authentication
+  aicodemirror:
+    base_url: "https://api.aicodemirror.com/api/claudecode"
+    auth_type: "api_key"
+    api_key: "your-api-key-here"
+    enabled: true
+
+  # Example: Auth Token authentication with model
+  deepseek:
+    base_url: "https://api.deepseek.com/anthropic"
+    auth_type: "auth_token"
+    auth_token: "your-auth-token-here"
+    model: "deepseek-chat"
+    small_fast_model: "deepseek-chat"
+    enabled: true
+
+  # Example: GLM provider
+  glm:
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    auth_type: "auth_token"
+    auth_token: "your-auth-token-here"
+    model: "GLM-4.7"
+    enabled: true
+
+  # Example: Another provider (disabled)
+  aihubmix:
+    base_url: "https://aihubmix.com"
+    auth_type: "api_key"
+    api_key: "your-api-key-here"
+    enabled: false
+
+# Add your own providers below
+# Template:
+#  your_provider_name:
+#    base_url: "https://api.example.com"
+#    auth_type: "api_key"     # or "auth_token"
+#    api_key: "your-key"      # if using api_key
+#    # auth_token: "your-token"  # if using auth_token
+#    # model: "model-name"     # optional
+#    # small_fast_model: "model-name"  # optional
+#    enabled: true
+
+# Configuration notes:
+# - base_url: The API endpoint URL (required)
+# - auth_type: Either "api_key" or "auth_token" (required)
+# - api_key: Your API key (required if auth_type is "api_key")
+# - auth_token: Your authentication token (required if auth_type is "auth_token")
+# - model: Model name to use (optional)
+# - small_fast_model: Smaller/faster model name (optional)
+# - enabled: Set to false to temporarily disable a provider (optional, default: true)

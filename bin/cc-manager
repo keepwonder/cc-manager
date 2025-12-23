@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# cc-manager - Claude Code Provider Manager
+# ==============================================================================
+# Version: 1.0.0
+# Description: Easily manage and switch between Claude Code API providers
+# Author: Auto-generated
+# License: MIT
+# ==============================================================================
+
+set -e
+
+# Determine the installation directory
+if [[ -n "${CC_MANAGER_HOME}" ]]; then
+    CC_MANAGER_ROOT="${CC_MANAGER_HOME}"
+elif [[ -f "${HOME}/.local/lib/cc-manager/core.sh" ]]; then
+    CC_MANAGER_ROOT="${HOME}/.local/lib/cc-manager"
+elif [[ -f "/usr/local/lib/cc-manager/core.sh" ]]; then
+    CC_MANAGER_ROOT="/usr/local/lib/cc-manager"
+else
+    # Development mode - relative to script location
+    CC_MANAGER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+fi
+
+# Check if library exists
+if [[ ! -f "${CC_MANAGER_ROOT}/core.sh" ]]; then
+    echo "Error: cc-manager library not found" >&2
+    echo "Expected location: ${CC_MANAGER_ROOT}/core.sh" >&2
+    echo "Please reinstall cc-manager" >&2
+    exit 1
+fi
+
+# Load core library
+source "${CC_MANAGER_ROOT}/core.sh"
+
+# Parse command line arguments
+COMMAND="${1:-}"
+shift || true
+
+case "$COMMAND" in
+    switch|sw)
+        cmd_switch "$@"
+        ;;
+    status|st)
+        cmd_status "$@"
+        ;;
+    list|ls)
+        cmd_list "$@"
+        ;;
+    menu|m)
+        cmd_menu "$@"
+        ;;
+    back|b)
+        cmd_back "$@"
+        ;;
+    test|t)
+        cmd_test "$@"
+        ;;
+    run|r)
+        cmd_run "$@"
+        ;;
+    config|cfg)
+        cmd_config "$@"
+        ;;
+    add|a)
+        cmd_add "$@"
+        ;;
+    remove|rm)
+        cmd_remove "$@"
+        ;;
+    edit|e)
+        cmd_edit "$@"
+        ;;
+    history|hist)
+        cmd_history "$@"
+        ;;
+    clear-history|ch)
+        cmd_clear_history "$@"
+        ;;
+    export|exp)
+        cmd_export "$@"
+        ;;
+    import|imp)
+        cmd_import "$@"
+        ;;
+    version|v)
+        cmd_version "$@"
+        ;;
+    help|h|--help|-h|"")
+        cmd_help "$@"
+        ;;
+    *)
+        echo "Error: Unknown command '$COMMAND'" >&2
+        echo "Run 'cc-manager help' for usage information" >&2
+        exit 1
+        ;;
+esac
