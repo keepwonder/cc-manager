@@ -4,7 +4,7 @@
 # ==============================================================================
 
 # Version
-CC_MANAGER_VERSION="1.0.0"
+CC_MANAGER_VERSION="1.0.2"
 
 # Load other modules
 CC_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

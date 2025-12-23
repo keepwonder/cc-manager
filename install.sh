@@ -80,12 +80,20 @@ install_files() {
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$CACHE_DIR"
 
-    # Install binary
+    # Install binaries
     if [[ -f "$SCRIPT_DIR/bin/cc-manager" ]]; then
         install -m 755 "$SCRIPT_DIR/bin/cc-manager" "$BIN_DIR/cc-manager"
-        print_success "Installed binary to $BIN_DIR/cc-manager"
+        print_success "Installed wrapper to $BIN_DIR/cc-manager"
     else
-        print_error "Binary not found: $SCRIPT_DIR/bin/cc-manager"
+        print_error "Wrapper not found: $SCRIPT_DIR/bin/cc-manager"
+        exit 1
+    fi
+
+    if [[ -f "$SCRIPT_DIR/bin/cc-manager-bin" ]]; then
+        install -m 755 "$SCRIPT_DIR/bin/cc-manager-bin" "$BIN_DIR/cc-manager-bin"
+        print_success "Installed binary to $BIN_DIR/cc-manager-bin"
+    else
+        print_error "Binary not found: $SCRIPT_DIR/bin/cc-manager-bin"
         exit 1
     fi
 

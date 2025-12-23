@@ -41,6 +41,40 @@ switch_provider() {
     log_success "Switched to $provider"
     echo "  BASE_URL: ${PROVIDERS_BASE_URL[$provider]}"
     [[ -n "${PROVIDERS_MODEL[$provider]}" ]] && echo "  MODEL: ${PROVIDERS_MODEL[$provider]}"
+
+    # Output export commands for eval (when called with --export)
+    if [[ "${CC_EXPORT_MODE:-}" == "1" ]]; then
+        _output_export_commands "$provider"
+    fi
+}
+
+# Output export commands for shell eval
+_output_export_commands() {
+    local provider="$1"
+
+    echo "# cc-manager export commands"
+    echo "unset ANTHROPIC_API_KEY"
+    echo "unset ANTHROPIC_AUTH_TOKEN"
+    echo "unset ANTHROPIC_BASE_URL"
+    echo "unset ANTHROPIC_MODEL"
+    echo "unset ANTHROPIC_SMALL_FAST_MODEL"
+
+    echo "export ANTHROPIC_BASE_URL=\"${PROVIDERS_BASE_URL[$provider]}\""
+
+    local auth_type="${PROVIDERS_AUTH_TYPE[$provider]}"
+    if [[ "$auth_type" == "api_key" ]]; then
+        echo "export ANTHROPIC_API_KEY=\"${PROVIDERS_API_KEY[$provider]}\""
+    elif [[ "$auth_type" == "auth_token" ]]; then
+        echo "export ANTHROPIC_AUTH_TOKEN=\"${PROVIDERS_AUTH_TOKEN[$provider]}\""
+    fi
+
+    if [[ -n "${PROVIDERS_MODEL[$provider]}" ]]; then
+        echo "export ANTHROPIC_MODEL=\"${PROVIDERS_MODEL[$provider]}\""
+    fi
+
+    if [[ -n "${PROVIDERS_SMALL_MODEL[$provider]}" ]]; then
+        echo "export ANTHROPIC_SMALL_FAST_MODEL=\"${PROVIDERS_SMALL_MODEL[$provider]}\""
+    fi
 }
 
 # Set environment variables for a provider

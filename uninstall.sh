@@ -63,9 +63,14 @@ confirm_uninstall() {
 remove_files() {
     print_info "Removing cc-manager files..."
 
-    # Remove binary
+    # Remove binaries
     if [[ -f "$BIN_DIR/cc-manager" ]]; then
         rm -f "$BIN_DIR/cc-manager"
+        print_success "Removed wrapper"
+    fi
+
+    if [[ -f "$BIN_DIR/cc-manager-bin" ]]; then
+        rm -f "$BIN_DIR/cc-manager-bin"
         print_success "Removed binary"
     fi
 

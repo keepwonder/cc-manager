@@ -2,10 +2,106 @@
 # ==============================================================================
 # cc-manager Shell Integration
 # ==============================================================================
-# This file provides aliases and completions for cc-manager
+# This file provides proper environment variable handling for cc-manager
 # Source this file in your .bashrc or .zshrc
 
-# Aliases
+# Find the real cc-manager binary
+_find_cc_manager_bin() {
+    local bin_path
+
+    # Try common installation locations
+    for path in \
+        "/usr/local/bin/cc-manager-bin" \
+        "$HOME/.local/bin/cc-manager-bin" \
+        "$(dirname "${BASH_SOURCE[0]}")/../bin/cc-manager-bin" \
+        "$(which cc-manager-bin 2>/dev/null)"; do
+
+        if [[ -f "$path" ]] && [[ -x "$path" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+
+    # Fallback to cc-manager if cc-manager-bin not found
+    which cc-manager 2>/dev/null
+}
+
+CC_MANAGER_BIN="$(_find_cc_manager_bin)"
+
+# Main cc-manager function that handles environment variables
+cc-manager() {
+    if [[ -z "$CC_MANAGER_BIN" ]]; then
+        echo "Error: cc-manager binary not found" >&2
+        return 1
+    fi
+
+    local command="$1"
+
+    # Commands that need environment variable injection
+    case "$command" in
+        switch|sw)
+            local provider="$2"
+            if [[ -z "$provider" ]]; then
+                "$CC_MANAGER_BIN" "$@"
+                return $?
+            fi
+
+            # Get export commands and eval them
+            local output
+            output=$(CC_EXPORT_MODE=1 "$CC_MANAGER_BIN" "$@" 2>&1)
+            local exit_code=$?
+
+            # Show the output (except export commands)
+            echo "$output" | grep -v "^export\|^unset\|^# cc-manager export"
+
+            # Extract and eval export commands
+            local export_commands
+            export_commands=$(echo "$output" | grep -A 100 "# cc-manager export commands" | grep "^export\|^unset")
+
+            if [[ -n "$export_commands" ]] && [[ $exit_code -eq 0 ]]; then
+                eval "$export_commands"
+            fi
+
+            return $exit_code
+            ;;
+
+        back|b)
+            # Handle back command
+            local history_file="${HOME}/.cache/cc-manager/history"
+            if [[ ! -s "$history_file" ]]; then
+                echo "No history available"
+                return 1
+            fi
+
+            local prev_provider
+            prev_provider=$(tail -1 "$history_file")
+
+            if [[ -z "$prev_provider" ]]; then
+                echo "No previous provider in history"
+                return 1
+            fi
+
+            # Remove from history (will be re-added by switch)
+            if [[ "$(uname)" == "Darwin" ]]; then
+                sed -i '' -e '$ d' "$history_file" 2>/dev/null
+            else
+                sed -i '$ d' "$history_file" 2>/dev/null
+            fi
+
+            # Switch to previous provider
+            cc-manager switch "$prev_provider"
+            return $?
+            ;;
+
+        *)
+            # For all other commands, just pass through
+            "$CC_MANAGER_BIN" "$@"
+            return $?
+            ;;
+    esac
+}
+
+# Legacy aliases (for backward compatibility)
 alias ccm='cc-manager'
 alias ccm-sw='cc-manager switch'
 alias ccm-st='cc-manager status'
@@ -105,16 +201,11 @@ if [[ -n "$ZSH_VERSION" ]]; then
     compdef _cc_manager_completion cc-manager ccm
 fi
 
-# Function to quickly switch and show status
+# Convenience function: switch and show status
 ccs() {
     if [[ -z "$1" ]]; then
         cc-manager list
     else
         cc-manager switch "$1" && cc-manager status
     fi
-}
-
-# Function to switch with menu
-ccmenu() {
-    cc-manager menu
 }

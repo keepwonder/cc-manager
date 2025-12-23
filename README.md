@@ -26,7 +26,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/cc-manager.git
+git clone https://github.com/keepwonder/cc-manager.git
 cd cc-manager
 
 # Install (requires sudo for system-wide installation)

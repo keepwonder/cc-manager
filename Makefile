@@ -7,7 +7,7 @@ LIB_DIR = $(PREFIX)/lib/cc-manager
 
 # Project info
 PROJECT = cc-manager
-VERSION = 1.0.0
+VERSION = 1.0.2
 
 help:
 	@echo "$(PROJECT) v$(VERSION) - Makefile Commands"
@@ -61,6 +61,7 @@ test:
 check-syntax:
 	@echo "Checking shell script syntax..."
 	@bash -n bin/cc-manager
+	@bash -n bin/cc-manager-bin
 	@bash -n install.sh
 	@bash -n uninstall.sh
 	@for lib in lib/*.sh; do \
@@ -78,6 +79,7 @@ check-syntax:
 validate:
 	@echo "Validating project structure..."
 	@test -f bin/cc-manager || (echo "Missing: bin/cc-manager" && exit 1)
+	@test -f bin/cc-manager-bin || (echo "Missing: bin/cc-manager-bin" && exit 1)
 	@test -f lib/core.sh || (echo "Missing: lib/core.sh" && exit 1)
 	@test -f lib/config.sh || (echo "Missing: lib/config.sh" && exit 1)
 	@test -f lib/providers.sh || (echo "Missing: lib/providers.sh" && exit 1)
@@ -99,6 +101,7 @@ clean:
 chmod:
 	@echo "Setting executable permissions..."
 	@chmod +x bin/cc-manager
+	@chmod +x bin/cc-manager-bin
 	@chmod +x install.sh
 	@chmod +x uninstall.sh
 	@if [ -d tests ]; then chmod +x tests/*.sh 2>/dev/null || true; fi

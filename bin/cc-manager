@@ -2,15 +2,10 @@
 # ==============================================================================
 # cc-manager - Claude Code Provider Manager
 # ==============================================================================
-# Version: 1.0.0
-# Description: Easily manage and switch between Claude Code API providers
-# Author: Auto-generated
-# License: MIT
+# This is a wrapper script that provides proper shell integration
 # ==============================================================================
 
-set -e
-
-# Determine the installation directory
+# Determine installation directory
 if [[ -n "${CC_MANAGER_HOME}" ]]; then
     CC_MANAGER_ROOT="${CC_MANAGER_HOME}"
 elif [[ -f "${HOME}/.local/lib/cc-manager/core.sh" ]]; then
@@ -18,80 +13,68 @@ elif [[ -f "${HOME}/.local/lib/cc-manager/core.sh" ]]; then
 elif [[ -f "/usr/local/lib/cc-manager/core.sh" ]]; then
     CC_MANAGER_ROOT="/usr/local/lib/cc-manager"
 else
-    # Development mode - relative to script location
+    # Development mode
     CC_MANAGER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
 fi
 
-# Check if library exists
-if [[ ! -f "${CC_MANAGER_ROOT}/core.sh" ]]; then
-    echo "Error: cc-manager library not found" >&2
-    echo "Expected location: ${CC_MANAGER_ROOT}/core.sh" >&2
-    echo "Please reinstall cc-manager" >&2
+# Check for shell integration
+SHELL_INTEGRATION="${CC_MANAGER_ROOT}/shell-integration.sh"
+
+# If called directly (not from shell function), show helpful message
+if [[ -f "$SHELL_INTEGRATION" ]] && [[ "$1" =~ ^(switch|sw|back|b)$ ]]; then
+    cat >&2 << 'EOF'
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  IMPORTANT: Shell Integration Required
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For 'switch' and 'back' commands to work properly, you need to enable
+shell integration. This allows cc-manager to set environment variables
+in your current shell.
+
+Quick Setup:
+  1. Add this to your ~/.bashrc or ~/.zshrc:
+
+EOF
+
+    if [[ -f "/usr/local/lib/cc-manager/shell-integration.sh" ]]; then
+        cat >&2 << 'EOF'
+     source /usr/local/lib/cc-manager/shell-integration.sh
+EOF
+    elif [[ -f "$HOME/.local/lib/cc-manager/shell-integration.sh" ]]; then
+        cat >&2 << EOF
+     source \$HOME/.local/lib/cc-manager/shell-integration.sh
+EOF
+    else
+        cat >&2 << EOF
+     source $SHELL_INTEGRATION
+EOF
+    fi
+
+    cat >&2 << 'EOF'
+
+  2. Reload your shell:
+
+     source ~/.bashrc  # or ~/.zshrc
+
+  3. Then use cc-manager as normal:
+
+     cc-manager switch deepseek
+
+After setup, all cc-manager commands will work seamlessly!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Continuing with command (environment variables will NOT persist)...
+
+EOF
+fi
+
+# Execute the actual binary
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CC_MANAGER_BIN="${SCRIPT_DIR}/cc-manager-bin"
+
+if [[ ! -f "$CC_MANAGER_BIN" ]]; then
+    echo "Error: cc-manager binary not found: $CC_MANAGER_BIN" >&2
     exit 1
 fi
 
-# Load core library
-source "${CC_MANAGER_ROOT}/core.sh"
-
-# Parse command line arguments
-COMMAND="${1:-}"
-shift || true
-
-case "$COMMAND" in
-    switch|sw)
-        cmd_switch "$@"
-        ;;
-    status|st)
-        cmd_status "$@"
-        ;;
-    list|ls)
-        cmd_list "$@"
-        ;;
-    menu|m)
-        cmd_menu "$@"
-        ;;
-    back|b)
-        cmd_back "$@"
-        ;;
-    test|t)
-        cmd_test "$@"
-        ;;
-    run|r)
-        cmd_run "$@"
-        ;;
-    config|cfg)
-        cmd_config "$@"
-        ;;
-    add|a)
-        cmd_add "$@"
-        ;;
-    remove|rm)
-        cmd_remove "$@"
-        ;;
-    edit|e)
-        cmd_edit "$@"
-        ;;
-    history|hist)
-        cmd_history "$@"
-        ;;
-    clear-history|ch)
-        cmd_clear_history "$@"
-        ;;
-    export|exp)
-        cmd_export "$@"
-        ;;
-    import|imp)
-        cmd_import "$@"
-        ;;
-    version|v)
-        cmd_version "$@"
-        ;;
-    help|h|--help|-h|"")
-        cmd_help "$@"
-        ;;
-    *)
-        echo "Error: Unknown command '$COMMAND'" >&2
-        echo "Run 'cc-manager help' for usage information" >&2
-        exit 1
-        ;;
-esac
+exec "$CC_MANAGER_BIN" "$@"
