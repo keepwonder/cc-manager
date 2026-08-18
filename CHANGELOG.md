@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- Obsolete v1.0.x process documents (QUICK_FIX, IMPORTANT_USAGE, USAGE_GUIDE,
+  QUICKSTART, PROJECT_SUMMARY, UNIFIED_COMMAND_SUMMARY, RELEASE_NOTES_v1.0.1/2):
+  their content is covered by README / README.zh-CN, CHANGELOG, and docs/.
+  The root now keeps only README (both languages), CHANGELOG, and CONTRIBUTING.
+
 ## [1.1.0] - 2026-08-18
 
 ### Added
