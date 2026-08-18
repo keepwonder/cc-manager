@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-18
+
+### Added
+- **Custom `env` blocks per provider**: any environment variables (e.g.
+  `ANTHROPIC_DEFAULT_OPUS_MODEL`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`) can now
+  be declared in a provider's `env:` section and are set on switch. Existing
+  five fields are unchanged; old configs work as-is.
+- `cc-manager add` interactively accepts extra `KEY=value` environment variables
+- `cc-manager status` shows the current provider's custom env variables
+- `cc-manager config validate` checks env variable name syntax
+- Chinese README (`README.zh-CN.md`) with cross-links from the English README
+
+### Changed
+- Switching now unsets the union of all env-block variables declared across
+  providers (derived from config), so values never leak between providers
+- Export commands are single-quoted, making `eval` safe for values containing
+  spaces, `$`, or quotes
+
+### Fixed
+- `config validate` aborted on the first error under `set -e` (`((errors++))`
+  arithmetic trap); it now reports all errors
+
 ## [1.0.2] - 2025-12-23
 
 ### Changed

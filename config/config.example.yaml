@@ -27,13 +27,18 @@ providers:
     small_fast_model: "deepseek-chat"
     enabled: true
 
-  # Example: GLM provider
+  # Example: GLM provider with custom env block
   glm:
     base_url: "https://open.bigmodel.cn/api/anthropic"
     auth_type: "auth_token"
     auth_token: "your-auth-token-here"
     model: "GLM-4.7"
     enabled: true
+    env:
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "GLM-4.7"
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "GLM-4.6"
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "GLM-4.5-air"
+      CLAUDE_CODE_AUTO_COMPACT_WINDOW: "1000000"
 
   # Example: Another provider (disabled)
   aihubmix:
@@ -52,6 +57,8 @@ providers:
 #    # model: "model-name"     # optional
 #    # small_fast_model: "model-name"  # optional
 #    enabled: true
+#    # env:                     # optional: arbitrary environment variables
+#    #   ANTHROPIC_DEFAULT_OPUS_MODEL: "model-name"
 
 # Configuration notes:
 # - base_url: The API endpoint URL (required)
@@ -61,3 +68,5 @@ providers:
 # - model: Model name to use (optional)
 # - small_fast_model: Smaller/faster model name (optional)
 # - enabled: Set to false to temporarily disable a provider (optional, default: true)
+# - env: Arbitrary KEY: "value" environment variables set on switch (optional);
+#   all env-block variables across providers are unset before switching

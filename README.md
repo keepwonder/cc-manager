@@ -2,6 +2,8 @@
 
 > **Claude Code Provider Manager** - Easily manage and switch between Claude Code API providers
 
+English | [中文文档](README.zh-CN.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Shell Script](https://img.shields.io/badge/Shell-Bash-green.svg)](https://www.gnu.org/software/bash/)
 
@@ -236,6 +238,18 @@ providers:
     model: "deepseek-chat"
     small_fast_model: "deepseek-chat"
     enabled: true
+
+  glm:
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    auth_type: "auth_token"
+    auth_token: "your-auth-token-here"
+    model: "GLM-4.7"
+    enabled: true
+    env:
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "GLM-4.7"
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "GLM-4.6"
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "GLM-4.5-air"
+      CLAUDE_CODE_AUTO_COMPACT_WINDOW: "1000000"
 ```
 
 ### Provider Configuration
@@ -248,6 +262,13 @@ Each provider requires:
 - `model` - Model name (optional)
 - `small_fast_model` - Smaller/faster model (optional)
 - `enabled` - Enable/disable provider (optional, default: true)
+- `env` - Arbitrary environment variables to set when switching to this provider (optional)
+
+The `env` block accepts any `KEY: "value"` pairs (valid environment variable names).
+Useful for model mapping or provider-specific flags, e.g.
+`ANTHROPIC_DEFAULT_OPUS_MODEL`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`. Switching
+providers unsets all variables declared in any provider's `env` block first,
+so values never leak across providers.
 
 ### Environment Variables
 

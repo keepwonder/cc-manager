@@ -19,6 +19,11 @@ declare -A PROVIDERS_MODEL
 declare -A PROVIDERS_SMALL_MODEL
 declare -A PROVIDERS_ENABLED
 
+# Custom env blocks: values are stored as PROVIDERS_ENV["provider|KEY"],
+# key lists as a space-separated string in PROVIDERS_ENV_KEYS[provider]
+declare -A PROVIDERS_ENV
+declare -A PROVIDERS_ENV_KEYS
+
 DEFAULT_PROVIDER=""
 
 # Load configuration from YAML file
@@ -36,10 +41,14 @@ load_config() {
     PROVIDERS_MODEL=()
     PROVIDERS_SMALL_MODEL=()
     PROVIDERS_ENABLED=()
+    PROVIDERS_ENV=()
+    PROVIDERS_ENV_KEYS=()
     DEFAULT_PROVIDER=""
 
     local current_provider=""
     local in_providers=false
+    local in_env=false
+    local env_key env_value env_index
 
     while IFS= read -r line; do
         # Skip comments and empty lines
@@ -64,15 +73,40 @@ load_config() {
         fi
 
         if [[ "$in_providers" == true ]]; then
+            # Enter custom env block of the current provider.
+            # Must be checked before the entry regex below, which would
+            # otherwise treat "env:" as a provider named "env".
+            if [[ -n "$current_provider" && "$line" == "env:" ]]; then
+                in_env=true
+                continue
+            fi
+
             # New provider entry
             if [[ "$line" =~ ^([a-zA-Z0-9_-]+):$ ]]; then
                 current_provider="${BASH_REMATCH[1]}"
                 PROVIDERS_ENABLED[$current_provider]="true"
+                in_env=false
                 continue
             fi
 
             # Provider properties
             if [[ -n "$current_provider" ]]; then
+                # Inside env block: capture KEY: "value" pairs
+                if [[ "$in_env" == true ]]; then
+                    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*):[[:space:]]*(.+)$ ]]; then
+                        env_key="${BASH_REMATCH[1]}"
+                        env_value="${BASH_REMATCH[2]}"
+                        env_value="${env_value//\"/}"
+                        env_index="${current_provider}|${env_key}"
+                        PROVIDERS_ENV["$env_index"]="$env_value"
+                        [[ " ${PROVIDERS_ENV_KEYS[$current_provider]} " != *" $env_key "* ]] && \
+                            PROVIDERS_ENV_KEYS[$current_provider]+=" $env_key"
+                        continue
+                    fi
+                    # Anything else ends the env block
+                    in_env=false
+                fi
+
                 if [[ "$line" =~ ^base_url:[[:space:]]*(.+)$ ]]; then
                     PROVIDERS_BASE_URL[$current_provider]="${BASH_REMATCH[1]//\"/}"
                 elif [[ "$line" =~ ^auth_type:[[:space:]]*(.+)$ ]]; then
@@ -208,7 +242,7 @@ validate_config() {
     # Check if we have any providers
     if [[ ${#PROVIDERS_BASE_URL[@]} -eq 0 ]]; then
         log_error "No providers configured"
-        ((errors++))
+        errors=$((errors+1))
     else
         log_success "Found ${#PROVIDERS_BASE_URL[@]} provider(s)"
     fi
@@ -221,7 +255,7 @@ validate_config() {
         # Check base URL
         if [[ -z "${PROVIDERS_BASE_URL[$provider]}" ]]; then
             log_error "  Missing base_url"
-            ((errors++))
+            errors=$((errors+1))
         else
             log_success "  base_url: ${PROVIDERS_BASE_URL[$provider]}"
         fi
@@ -231,21 +265,33 @@ validate_config() {
         if [[ "$auth_type" == "api_key" ]]; then
             if [[ -z "${PROVIDERS_API_KEY[$provider]}" ]]; then
                 log_error "  Missing api_key"
-                ((errors++))
+                errors=$((errors+1))
             else
                 log_success "  api_key: ***${PROVIDERS_API_KEY[$provider]: -6}"
             fi
         elif [[ "$auth_type" == "auth_token" ]]; then
             if [[ -z "${PROVIDERS_AUTH_TOKEN[$provider]}" ]]; then
                 log_error "  Missing auth_token"
-                ((errors++))
+                errors=$((errors+1))
             else
                 log_success "  auth_token: ***${PROVIDERS_AUTH_TOKEN[$provider]: -6}"
             fi
         else
             log_error "  Invalid or missing auth_type: $auth_type"
-            ((errors++))
+            errors=$((errors+1))
         fi
+
+        # Validate custom env block
+        local env_key
+        for env_key in ${PROVIDERS_ENV_KEYS[$provider]}; do
+            if [[ "$env_key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                local env_index="${provider}|${env_key}"
+                log_success "  env ${env_key}: ${PROVIDERS_ENV[$env_index]}"
+            else
+                log_error "  Invalid env variable name: $env_key"
+                errors=$((errors+1))
+            fi
+        done
     done
 
     echo ""

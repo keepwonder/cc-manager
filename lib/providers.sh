@@ -48,45 +48,79 @@ switch_provider() {
     fi
 }
 
+# Quote $1 so eval-based consumers receive the exact string
+_shell_quote() {
+    printf "'%s'" "${1//\'/\'\\\'\'}"
+}
+
+# Unset every environment variable any configured provider may have set:
+# the fixed set plus the union of all custom env block keys. Derived from
+# the config itself, so it stays correct as providers are added/removed.
+_unset_all_provider_vars() {
+    unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL \
+          ANTHROPIC_MODEL ANTHROPIC_SMALL_FAST_MODEL 2>/dev/null
+
+    local provider key
+    for provider in "${!PROVIDERS_ENV_KEYS[@]}"; do
+        for key in ${PROVIDERS_ENV_KEYS[$provider]}; do
+            unset "$key" 2>/dev/null
+        done
+    done
+}
+
 # Output export commands for shell eval
 _output_export_commands() {
     local provider="$1"
 
     echo "# cc-manager export commands"
-    echo "unset ANTHROPIC_API_KEY"
-    echo "unset ANTHROPIC_AUTH_TOKEN"
-    echo "unset ANTHROPIC_BASE_URL"
-    echo "unset ANTHROPIC_MODEL"
-    echo "unset ANTHROPIC_SMALL_FAST_MODEL"
 
-    echo "export ANTHROPIC_BASE_URL=\"${PROVIDERS_BASE_URL[$provider]}\""
+    # Unset everything any provider might have set
+    {
+        echo "unset ANTHROPIC_API_KEY"
+        echo "unset ANTHROPIC_AUTH_TOKEN"
+        echo "unset ANTHROPIC_BASE_URL"
+        echo "unset ANTHROPIC_MODEL"
+        echo "unset ANTHROPIC_SMALL_FAST_MODEL"
+
+        local iter key
+        for iter in "${!PROVIDERS_ENV_KEYS[@]}"; do
+            for key in ${PROVIDERS_ENV_KEYS[$iter]}; do
+                echo "unset $key"
+            done
+        done
+    }
+
+    echo "export ANTHROPIC_BASE_URL=$(_shell_quote "${PROVIDERS_BASE_URL[$provider]}")"
 
     local auth_type="${PROVIDERS_AUTH_TYPE[$provider]}"
     if [[ "$auth_type" == "api_key" ]]; then
-        echo "export ANTHROPIC_API_KEY=\"${PROVIDERS_API_KEY[$provider]}\""
+        echo "export ANTHROPIC_API_KEY=$(_shell_quote "${PROVIDERS_API_KEY[$provider]}")"
     elif [[ "$auth_type" == "auth_token" ]]; then
-        echo "export ANTHROPIC_AUTH_TOKEN=\"${PROVIDERS_AUTH_TOKEN[$provider]}\""
+        echo "export ANTHROPIC_AUTH_TOKEN=$(_shell_quote "${PROVIDERS_AUTH_TOKEN[$provider]}")"
     fi
 
     if [[ -n "${PROVIDERS_MODEL[$provider]}" ]]; then
-        echo "export ANTHROPIC_MODEL=\"${PROVIDERS_MODEL[$provider]}\""
+        echo "export ANTHROPIC_MODEL=$(_shell_quote "${PROVIDERS_MODEL[$provider]}")"
     fi
 
     if [[ -n "${PROVIDERS_SMALL_MODEL[$provider]}" ]]; then
-        echo "export ANTHROPIC_SMALL_FAST_MODEL=\"${PROVIDERS_SMALL_MODEL[$provider]}\""
+        echo "export ANTHROPIC_SMALL_FAST_MODEL=$(_shell_quote "${PROVIDERS_SMALL_MODEL[$provider]}")"
     fi
+
+    # Apply custom env block
+    local key env_index
+    for key in ${PROVIDERS_ENV_KEYS[$provider]}; do
+        env_index="${provider}|${key}"
+        echo "export $key=$(_shell_quote "${PROVIDERS_ENV[$env_index]}")"
+    done
 }
 
 # Set environment variables for a provider
 _set_provider_env() {
     local provider="$1"
 
-    # Clear existing variables
-    unset ANTHROPIC_API_KEY
-    unset ANTHROPIC_AUTH_TOKEN
-    unset ANTHROPIC_BASE_URL
-    unset ANTHROPIC_MODEL
-    unset ANTHROPIC_SMALL_FAST_MODEL
+    # Clear everything any provider might have set
+    _unset_all_provider_vars
 
     # Set base URL
     export ANTHROPIC_BASE_URL="${PROVIDERS_BASE_URL[$provider]}"
@@ -107,6 +141,13 @@ _set_provider_env() {
     if [[ -n "${PROVIDERS_SMALL_MODEL[$provider]}" ]]; then
         export ANTHROPIC_SMALL_FAST_MODEL="${PROVIDERS_SMALL_MODEL[$provider]}"
     fi
+
+    # Apply custom env block
+    local key env_index
+    for key in ${PROVIDERS_ENV_KEYS[$provider]}; do
+        env_index="${provider}|${key}"
+        export "$key=${PROVIDERS_ENV[$env_index]}"
+    done
 }
 
 # List all providers
@@ -181,6 +222,21 @@ show_status() {
 
     if [[ -n "$ANTHROPIC_SMALL_FAST_MODEL" ]]; then
         echo "  SMALL_MODEL: $ANTHROPIC_SMALL_FAST_MODEL"
+    fi
+
+    # Show the current provider's custom env block (actual shell values)
+    if [[ -n "$current_provider" && -n "${PROVIDERS_ENV_KEYS[$current_provider]}" ]]; then
+        echo ""
+        echo "Provider Env:"
+        local env_key env_index
+        for env_key in $(echo "${PROVIDERS_ENV_KEYS[$current_provider]}" | tr ' ' '\n' | sort); do
+            if [[ -n "${!env_key+x}" ]]; then
+                echo "  $env_key: ${!env_key}"
+            else
+                env_index="${current_provider}|${env_key}"
+                echo "  $env_key: ${PROVIDERS_ENV[$env_index]} (config value; not set in this shell)"
+            fi
+        done
     fi
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -349,10 +405,12 @@ _insert_provider_block() {
 add_provider_interactive() {
     local name="$1"
 
-    # Provider name must match what load_config can parse back
-    if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    # Provider name must match what load_config can parse back.
+    # "env" is reserved: load_config treats an "env:" entry as a custom
+    # env block of the provider above it.
+    if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]] || [[ "$name" == "env" ]]; then
         log_error "Invalid provider name: '$name'"
-        echo "Use letters, digits, dashes and underscores only"
+        echo "Use letters, digits, dashes and underscores only ('env' is reserved)"
         return 1
     fi
 
@@ -394,6 +452,26 @@ add_provider_interactive() {
     echo -n "Model (optional): "
     read -r model
 
+    # Optional: custom environment variables
+    echo "Extra environment variables (format: KEY=value, empty line to finish):"
+    local env_lines="" kv env_k env_v
+    while true; do
+        echo -n "  env> "
+        read -r kv
+        [[ -z "$kv" ]] && break
+        if [[ ! "$kv" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+            log_warning "Invalid format, use KEY=value"
+            continue
+        fi
+        env_k="${kv%%=*}"
+        env_v="${kv#*=}"
+        if [[ "$env_v" == *\"* ]]; then
+            log_warning "Values containing double quotes are not supported"
+            continue
+        fi
+        env_lines+=$'\n'"      ${env_k}: \"${env_v}\""
+    done
+
     # Double quotes would break the YAML quoting used when writing
     local value
     for value in "$base_url" "$api_key" "$auth_token" "$model"; do
@@ -414,6 +492,7 @@ add_provider_interactive() {
     fi
     [[ -n "$model" ]] && block+=$'\n'"    model: \"$model\""
     block+=$'\n'"    enabled: true"
+    [[ -n "$env_lines" ]] && block+=$'\n'"    env:${env_lines}"
 
     _insert_provider_block "$block" || {
         log_error "Failed to write provider to config file"
