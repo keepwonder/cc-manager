@@ -5,6 +5,13 @@
 
 set -e
 
+# Require bash 4+ (associative arrays); macOS ships bash 3.2 by default
+if ((BASH_VERSINFO[0] < 4)); then
+    echo "Error: cc-manager requires bash 4 or newer (found ${BASH_VERSION})" >&2
+    echo "On macOS: brew install bash, then restart your shell and retry" >&2
+    exit 1
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'

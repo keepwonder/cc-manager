@@ -22,17 +22,17 @@ assert_eq() {
     local actual="$2"
     local message="${3:-Assertion failed}"
 
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
 
     if [[ "$expected" == "$actual" ]]; then
         echo -e "${GREEN}✓${NC} $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         echo -e "${RED}✗${NC} $message"
         echo "  Expected: $expected"
         echo "  Actual:   $actual"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -41,15 +41,15 @@ assert_file_exists() {
     local file="$1"
     local message="${2:-File should exist: $file}"
 
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
 
     if [[ -f "$file" ]]; then
         echo -e "${GREEN}✓${NC} $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         echo -e "${RED}✗${NC} $message"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -58,15 +58,15 @@ assert_command_exists() {
     local cmd="$1"
     local message="${2:-Command should exist: $cmd}"
 
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
 
     if command -v "$cmd" &> /dev/null; then
         echo -e "${GREEN}✓${NC} $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
         return 0
     else
         echo -e "${RED}✗${NC} $message"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 }
@@ -110,23 +110,23 @@ run_tests() {
 
     # Test 3: Check syntax of all shell scripts
     echo "Test 3: Syntax validation"
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     if bash -n "../bin/cc-manager" &> /dev/null; then
         echo -e "${GREEN}✓${NC} Main script syntax is valid"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         echo -e "${RED}✗${NC} Main script has syntax errors"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
 
     for lib in ../lib/*.sh; do
-        ((TESTS_RUN++))
+        TESTS_RUN=$((TESTS_RUN+1))
         if bash -n "$lib" &> /dev/null; then
             echo -e "${GREEN}✓${NC} $(basename "$lib") syntax is valid"
-            ((TESTS_PASSED++))
+            TESTS_PASSED=$((TESTS_PASSED+1))
         else
             echo -e "${RED}✗${NC} $(basename "$lib") has syntax errors"
-            ((TESTS_FAILED++))
+            TESTS_FAILED=$((TESTS_FAILED+1))
         fi
     done
     echo ""
@@ -136,22 +136,22 @@ run_tests() {
     assert_file_exists "../install.sh" "install.sh should exist"
     assert_file_exists "../uninstall.sh" "uninstall.sh should exist"
 
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     if bash -n "../install.sh" &> /dev/null; then
         echo -e "${GREEN}✓${NC} install.sh syntax is valid"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         echo -e "${RED}✗${NC} install.sh has syntax errors"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
 
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     if bash -n "../uninstall.sh" &> /dev/null; then
         echo -e "${GREEN}✓${NC} uninstall.sh syntax is valid"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         echo -e "${RED}✗${NC} uninstall.sh has syntax errors"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
     echo ""
 

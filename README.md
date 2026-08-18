@@ -18,7 +18,7 @@
 - 🎯 **Interactive Menu** - User-friendly menu for provider selection
 - 🔍 **Connection Testing** - Test provider connectivity before use
 - 🚀 **Shell Integration** - Aliases and completions for faster workflow
-- 📦 **No Dependencies** - Pure Bash, works on any Unix-like system
+- 📦 **Minimal Dependencies** - Pure Bash 4+, no other dependencies
 
 ## Quick Start
 

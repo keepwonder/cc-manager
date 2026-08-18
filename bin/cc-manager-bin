@@ -10,6 +10,13 @@
 
 set -e
 
+# Require bash 4+ (associative arrays); macOS ships bash 3.2 by default
+if ((BASH_VERSINFO[0] < 4)); then
+    echo "Error: cc-manager requires bash 4 or newer (found ${BASH_VERSION})" >&2
+    echo "On macOS: brew install bash, then restart your shell" >&2
+    exit 1
+fi
+
 # Determine the installation directory
 if [[ -n "${CC_MANAGER_HOME}" ]]; then
     CC_MANAGER_ROOT="${CC_MANAGER_HOME}"
