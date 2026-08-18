@@ -28,6 +28,16 @@ load_config() {
         return 1
     fi
 
+    # Clear previously loaded state so reloads (add/remove/import) are safe
+    PROVIDERS_BASE_URL=()
+    PROVIDERS_AUTH_TYPE=()
+    PROVIDERS_API_KEY=()
+    PROVIDERS_AUTH_TOKEN=()
+    PROVIDERS_MODEL=()
+    PROVIDERS_SMALL_MODEL=()
+    PROVIDERS_ENABLED=()
+    DEFAULT_PROVIDER=""
+
     local current_provider=""
     local in_providers=false
 

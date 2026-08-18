@@ -8,7 +8,7 @@ Get up and running with cc-manager in minutes!
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/cc-manager.git
+git clone https://github.com/keepwonder/cc-manager.git
 cd cc-manager
 
 # Install to ~/.local (no sudo required)
@@ -19,7 +19,7 @@ make dev-install
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/cc-manager.git
+git clone https://github.com/keepwonder/cc-manager.git
 cd cc-manager
 
 # Install to /usr/local (requires sudo)
@@ -29,7 +29,7 @@ make install
 ### Option 3: One-liner Install (Coming Soon)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/cc-manager/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/keepwonder/cc-manager/main/install.sh | bash
 ```
 
 ## Initial Configuration
@@ -272,7 +272,7 @@ cc-manager config reset
 
 - Read the full [README.md](README.md) for detailed documentation
 - Check the [CHANGELOG.md](CHANGELOG.md) for version history
-- Report issues on [GitHub](https://github.com/yourusername/cc-manager/issues)
+- Report issues on [GitHub](https://github.com/keepwonder/cc-manager/issues)
 
 ## Cheat Sheet
 

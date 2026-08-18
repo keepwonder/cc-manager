@@ -240,7 +240,7 @@ FILES:
     Current:  ~/.cache/cc-manager/current
 
 For more information, visit:
-    https://github.com/yourusername/cc-manager
+    https://github.com/keepwonder/cc-manager
 
 EOF
 }

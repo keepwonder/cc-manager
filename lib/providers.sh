@@ -191,14 +191,25 @@ interactive_menu() {
     echo "Select a Claude Code provider:"
     echo ""
 
-    local providers=($(echo "${!PROVIDERS_BASE_URL[@]}" | tr ' ' '\n' | sort))
-    local i=1
-
-    for provider in "${providers[@]}"; do
+    # Build candidates from enabled providers only, so the menu number
+    # and the array index always refer to the same provider
+    local candidates=()
+    local provider
+    for provider in $(echo "${!PROVIDERS_BASE_URL[@]}" | tr ' ' '\n' | sort); do
         if [[ "${PROVIDERS_ENABLED[$provider]}" != "false" ]]; then
-            echo "  $i) $provider"
-            ((i++))
+            candidates+=("$provider")
         fi
+    done
+
+    if [[ ${#candidates[@]} -eq 0 ]]; then
+        log_error "No enabled providers"
+        return 1
+    fi
+
+    local i=1
+    for provider in "${candidates[@]}"; do
+        echo "  $i) $provider"
+        ((i++))
     done
 
     echo "  0) Cancel"
@@ -213,7 +224,7 @@ interactive_menu() {
     fi
 
     if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -lt $i ]]; then
-        local selected_provider="${providers[$((selection-1))]}"
+        local selected_provider="${candidates[$((selection-1))]}"
         switch_provider "$selected_provider"
     else
         log_error "Invalid selection"
@@ -280,9 +291,70 @@ run_with_provider() {
     fi
 }
 
+# Insert a provider block at the end of the providers: section.
+# Appending blindly to the file would break the YAML structure when
+# the providers: section is not the last one in the config file.
+_insert_provider_block() {
+    local block="$1"
+
+    if ! grep -q '^providers:[[:space:]]*$' "$CC_CONFIG_FILE"; then
+        # No providers section yet: append one at the end
+        {
+            echo ""
+            echo "providers:"
+            echo "$block"
+        } >> "$CC_CONFIG_FILE"
+        return
+    fi
+
+    # Insert right before the first top-level line that ends the section.
+    # The multi-line block is passed via the environment: awk -v cannot
+    # carry literal newlines (fails with "newline in string" on BSD awk).
+    local tmp="${CC_CONFIG_FILE}.tmp.$$"
+    CCM_BLOCK="$block" awk '
+        function flush() {
+            for (i = 0; i < n; i++) print buf[i]
+            n = 0
+        }
+        !in_prov {
+            print
+            if ($0 ~ /^providers:[[:space:]]*$/) in_prov = 1
+            next
+        }
+        # First non-empty, non-indented line ends the providers section
+        $0 != "" && $0 !~ /^[[:space:]]/ {
+            flush()
+            print ""
+            print ENVIRON["CCM_BLOCK"]
+            print ""
+            print
+            in_prov = 0
+            next
+        }
+        { buf[n++] = $0 }
+        END {
+            if (in_prov) {
+                flush()
+                print ""
+                print ENVIRON["CCM_BLOCK"]
+            }
+        }
+    ' "$CC_CONFIG_FILE" > "$tmp" && mv "$tmp" "$CC_CONFIG_FILE" || {
+        rm -f "$tmp"
+        return 1
+    }
+}
+
 # Add provider interactively
 add_provider_interactive() {
     local name="$1"
+
+    # Provider name must match what load_config can parse back
+    if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        log_error "Invalid provider name: '$name'"
+        echo "Use letters, digits, dashes and underscores only"
+        return 1
+    fi
 
     # Check if provider already exists
     if [[ -n "${PROVIDERS_BASE_URL[$name]}" ]]; then
@@ -304,14 +376,17 @@ add_provider_interactive() {
     read -r auth_type
     [[ -z "$auth_type" ]] && auth_type="api_key"
 
-    # Get credentials
+    # Get credentials (silent read: never echo secrets to the terminal)
+    local api_key="" auth_token=""
     if [[ "$auth_type" == "api_key" ]]; then
         echo -n "API Key: "
-        read -r api_key
+        read -rs api_key
+        echo ""
         [[ -z "$api_key" ]] && { log_error "API Key is required"; return 1; }
     else
         echo -n "Auth Token: "
-        read -r auth_token
+        read -rs auth_token
+        echo ""
         [[ -z "$auth_token" ]] && { log_error "Auth Token is required"; return 1; }
     fi
 
@@ -319,20 +394,31 @@ add_provider_interactive() {
     echo -n "Model (optional): "
     read -r model
 
-    # Add to config file
-    {
-        echo ""
-        echo "  $name:"
-        echo "    base_url: \"$base_url\""
-        echo "    auth_type: \"$auth_type\""
-        if [[ "$auth_type" == "api_key" ]]; then
-            echo "    api_key: \"$api_key\""
-        else
-            echo "    auth_token: \"$auth_token\""
+    # Double quotes would break the YAML quoting used when writing
+    local value
+    for value in "$base_url" "$api_key" "$auth_token" "$model"; do
+        if [[ "$value" == *\"* ]]; then
+            log_error "Values containing double quotes are not supported"
+            return 1
         fi
-        [[ -n "$model" ]] && echo "    model: \"$model\""
-        echo "    enabled: true"
-    } >> "$CC_CONFIG_FILE"
+    done
+
+    # Build the provider block
+    local block="  $name:"
+    block+=$'\n'"    base_url: \"$base_url\""
+    block+=$'\n'"    auth_type: \"$auth_type\""
+    if [[ "$auth_type" == "api_key" ]]; then
+        block+=$'\n'"    api_key: \"$api_key\""
+    else
+        block+=$'\n'"    auth_token: \"$auth_token\""
+    fi
+    [[ -n "$model" ]] && block+=$'\n'"    model: \"$model\""
+    block+=$'\n'"    enabled: true"
+
+    _insert_provider_block "$block" || {
+        log_error "Failed to write provider to config file"
+        return 1
+    }
 
     # Reload config
     load_config
@@ -354,11 +440,40 @@ remove_provider() {
     read -r answer
 
     if [[ "$answer" =~ ^[Yy]$ ]]; then
-        # Remove from config file (simple approach: recreate without this provider)
-        log_warning "Manual removal required"
-        echo "Please edit the config file and remove the provider:"
-        echo "  $CC_CONFIG_FILE"
-        edit_config
+        # Backup before modifying
+        local backup="${CC_CONFIG_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "$CC_CONFIG_FILE" "$backup"
+        log_info "Backup saved to: $backup"
+
+        # Drop the provider block: from its "  name:" entry line up to
+        # (not including) the next entry line or top-level line
+        local tmp="${CC_CONFIG_FILE}.tmp.$$"
+        awk -v target="  ${name}:" '
+            /^  [[:alnum:]_-]+:[[:space:]]*$/ { in_target = ($0 == target) }
+            /^#/ || /^[^[:space:]]/ { in_target = 0 }
+            in_target { next }
+            { print }
+        ' "$CC_CONFIG_FILE" > "$tmp" && mv "$tmp" "$CC_CONFIG_FILE" || {
+            rm -f "$tmp"
+            log_error "Failed to update config file"
+            return 1
+        }
+
+        # Clear current provider if it was just removed
+        if [[ "$(cat "$CC_CURRENT_FILE" 2>/dev/null)" == "$name" ]]; then
+            : > "$CC_CURRENT_FILE"
+            log_info "Cleared current provider (was '$name')"
+        fi
+
+        # Reload config
+        load_config
+
+        if [[ "$DEFAULT_PROVIDER" == "$name" ]]; then
+            log_warning "Removed provider was the default_provider"
+            echo "Update default_provider in: $CC_CONFIG_FILE"
+        fi
+
+        log_success "Provider '$name' removed"
     else
         log_info "Operation cancelled"
     fi
